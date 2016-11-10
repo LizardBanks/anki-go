@@ -1,7 +1,9 @@
 package anki
 
 import (
+	"errors"
 	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -26,6 +28,21 @@ func Test_parseDecksJSON(t *testing.T) {
 		t.Errorf("expected 2 decks, got %d", len(r))
 	}
 
+	expectedStrings := []string{"Default", "Korean"}
+	for _, expectedString := range expectedStrings {
+		found := false
+		for _, result := range r {
+			if expectedString == result.Name {
+				found = true
+				break
+			}
+		}
+
+		if found != true {
+			t.Fatalf("expected to find '%s' but couldnt find it", expectedString)
+		}
+	}
+
 	if r[0].Name != "Default" {
 		t.Errorf("expected first deck to be 'Default', got '%s'", r[0].Name)
 	}
@@ -39,5 +56,95 @@ func Test_parseDecksJSON(t *testing.T) {
 
 	if err == nil {
 		fmt.Printf("expected error for invalid JSON")
+	}
+}
+
+func Test_GetCollections_DBError(t *testing.T) {
+	m := mockHandle{}
+	m.SelectFun = func(i interface{}, query string, args ...interface{}) ([]interface{}, error) {
+		return []interface{}{}, errors.New("database exploded")
+	}
+
+	client := Client{}
+	client.DBHandle = &m
+
+	result, err := client.GetCollections()
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+
+	if len(result) != 0 {
+		t.Fatalf("did not expect a result, got %d", len(result))
+	}
+}
+
+func Test_GetCollections_NoDeckJSON(t *testing.T) {
+	m := mockHandle{}
+	m.SelectFun = func(i interface{}, query string, args ...interface{}) ([]interface{}, error) {
+		collection := Collection{}
+		collection.ID = 1337
+
+		fakeCollections := []*Collection{&collection}
+
+		source := reflect.ValueOf(fakeCollections)
+		dest := reflect.ValueOf(i).Elem()
+
+		// write to destination
+		dest.Set(source)
+
+		return []interface{}{}, nil
+	}
+
+	client := Client{}
+	client.DBPath = "foo"
+	client.DBHandle = &m
+
+	col, err := client.GetCollections()
+	if err != nil {
+		t.Fatalf("did not expect error, got %v", err)
+	}
+
+	if len(col) != 1 {
+		t.Fatalf("expected 1 collection, got %d", len(col))
+	}
+
+	if len(col[0].Decks) != 0 {
+		t.Fatalf("expected 0 decks in collection, got %d", len(col[0].Decks))
+	}
+}
+
+func Test_GetCollections_JSONParsing(t *testing.T) {
+	m := mockHandle{}
+	m.SelectFun = func(i interface{}, query string, args ...interface{}) ([]interface{}, error) {
+		collection := Collection{}
+		collection.ID = 1337
+		collection.DecksJSON = "{\"1\": {\"name\": \"Default\"}, \"1234\": {\"name\": \"Korean\"}}"
+
+		fakeCollections := []*Collection{&collection}
+
+		source := reflect.ValueOf(fakeCollections)
+		dest := reflect.ValueOf(i).Elem()
+
+		// write to destination
+		dest.Set(source)
+
+		return []interface{}{}, nil
+	}
+
+	client := Client{}
+	client.DBPath = "foo"
+	client.DBHandle = &m
+
+	col, err := client.GetCollections()
+	if err != nil {
+		t.Fatalf("did not expect error, got %v", err)
+	}
+
+	if len(col) != 1 {
+		t.Fatalf("expected 1 collection, got %d", len(col))
+	}
+
+	if len(col[0].Decks) != 2 {
+		t.Fatalf("expected 2 decks in collection, got %d", len(col[0].Decks))
 	}
 }

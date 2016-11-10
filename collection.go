@@ -70,10 +70,12 @@ func (client *Client) GetCollections() ([]*Collection, error) {
 	}
 
 	for _, collection := range results {
-		fmt.Printf("json: %v\n", collection.DecksJSON)
 		decks, err := parseDecksJSON(collection.DecksJSON)
+
+		// on error, just assign empty decklist
+		// since we always get one back, just ignore the error
 		if err != nil {
-			return make([]*Collection, 0), err
+			fmt.Printf("error in deckset: %s\n", err.Error())
 		}
 
 		collection.Decks = decks
