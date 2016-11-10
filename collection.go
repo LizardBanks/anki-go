@@ -2,8 +2,7 @@ package anki
 
 import (
 	"encoding/json"
-
-	gorp "gopkg.in/gorp.v1"
+	"fmt"
 )
 
 const collectionTableName = "col"
@@ -46,26 +45,35 @@ type Collection struct {
 	Tags string `db:"tags"`
 }
 
-func GetCollections(dbmap *gorp.DbMap) ([]*Collection, error) {
+func parseDecksJSON(jsonString string) ([]Deck, error) {
+	var r map[string]*json.RawMessage
+	err := json.Unmarshal([]byte(jsonString), &r)
+	if err != nil {
+		return make([]Deck, 0), err
+	}
+
+	var decks []Deck
+	for _, jsonObject := range r {
+		var deck Deck
+		json.Unmarshal(*jsonObject, &deck)
+		decks = append(decks, deck)
+	}
+
+	return decks, nil
+}
+
+func (client *Client) GetCollections() ([]*Collection, error) {
 	results := []*Collection{}
-	_, err := dbmap.Select(&results, "SELECT * from col")
+	_, err := client.DBHandle.Select(&results, "SELECT * from col")
 	if err != nil {
 		return make([]*Collection, 0), err
 	}
 
 	for _, collection := range results {
-		// Parse JSON object
-		var r map[string]*json.RawMessage
-		err = json.Unmarshal([]byte(collection.DecksJSON), &r)
+		fmt.Printf("json: %v\n", collection.DecksJSON)
+		decks, err := parseDecksJSON(collection.DecksJSON)
 		if err != nil {
 			return make([]*Collection, 0), err
-		}
-
-		var decks []Deck
-		for _, jsonObject := range r {
-			var deck Deck
-			json.Unmarshal(*jsonObject, &deck)
-			decks = append(decks, deck)
 		}
 
 		collection.Decks = decks
