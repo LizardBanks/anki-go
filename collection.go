@@ -2,6 +2,7 @@ package anki
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
@@ -98,4 +99,19 @@ func (client *Client) GetDecks() ([]Deck, error) {
 	}
 
 	return decks, nil
+}
+
+func (client *Client) GetDeckByName(name string) (Deck, error) {
+	decks, err := client.GetDecks()
+	if err != nil {
+		return Deck{}, err
+	}
+
+	for _, deck := range decks {
+		if deck.Name == name {
+			return deck, nil
+		}
+	}
+
+	return Deck{}, errors.New("couldn't find deck with name")
 }

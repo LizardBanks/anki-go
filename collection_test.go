@@ -190,5 +190,38 @@ func Test_GetDecks(t *testing.T) {
 			t.Fatalf("expected to find '%s' but couldnt find it", expectedString)
 		}
 	}
+}
 
+func Test_GetDeckByName(t *testing.T) {
+	m := mockHandle{}
+	m.SelectFun = func(i interface{}, query string, args ...interface{}) ([]interface{}, error) {
+		collection1 := Collection{}
+		collection1.ID = 1337
+		collection1.DecksJSON = "{\"1\": {\"name\": \"Default\"}, \"1234\": {\"name\": \"Korean\", \"id\": \"1234\"}}"
+
+		fakeCollections := []*Collection{&collection1}
+		source := reflect.ValueOf(fakeCollections)
+		dest := reflect.ValueOf(i).Elem()
+		dest.Set(source)
+
+		return []interface{}{}, nil
+	}
+
+	client := Client{}
+	client.DBPath = "foo"
+	client.DBHandle = &m
+
+	deck, err := client.GetDeckByName("Korean")
+	if err != nil {
+		t.Fatalf("did not expect error, got %v", err)
+	}
+
+	if deck.Name != "Korean" {
+		t.Fatalf("deck has wrong name. Expected Korean, got %s", deck.Name)
+	}
+
+	deck, err = client.GetDeckByName("doesnotexist")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
 }
