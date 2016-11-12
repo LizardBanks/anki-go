@@ -16,21 +16,24 @@ and not really anything else yet 😇
 ## Usage
 
 ```go
+const PATH = "path/to/anki/db"
+
 ankiClient, err := anki.NewClient(PATH)
 if err != nil {
 	log.Fatalf("%v", err)
 }
 
-collections, err := ankiClient.GetCollections()
+deck, err := ankiClient.GetDeckByName("My::Deck")
 if err != nil {
-	log.Fatalf("Error: %v\n", err)
+    log.Fatalf("err: %v\n", err)
 }
 
-log.Printf("Number of collections: %v\n", len(collections))
+cards, err := ankiClient.GetCardsForDeck(&deck)
+if err != nil {
+    log.Fatalf("err: %v\n", err)
+}
 
-for _, collection := range collections {
-	for _, deck := range collection.Decks {
-		log.Printf("Deck Name: %v\n", deck.Name)
-	}
+for _, card := range cards {
+    fmt.Printf("card: %v\n", card)
 }
 ```
