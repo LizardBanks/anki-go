@@ -43,14 +43,6 @@ func Test_parseDecksJSON(t *testing.T) {
 		}
 	}
 
-	if r[0].Name != "Default" {
-		t.Errorf("expected first deck to be 'Default', got '%s'", r[0].Name)
-	}
-
-	if r[1].Name != "Korean" {
-		t.Errorf("expected first deck to be 'Korean', got '%s'", r[1].Name)
-	}
-
 	testJSONString = "\"1\": {\"foo\": \"Default\"}, \"1234\": {\"name\": \"Korean\"}}"
 	r, err = parseDecksJSON(testJSONString)
 
@@ -147,4 +139,56 @@ func Test_GetCollections_JSONParsing(t *testing.T) {
 	if len(col[0].Decks) != 2 {
 		t.Fatalf("expected 2 decks in collection, got %d", len(col[0].Decks))
 	}
+}
+
+func Test_GetDecks(t *testing.T) {
+	m := mockHandle{}
+	m.SelectFun = func(i interface{}, query string, args ...interface{}) ([]interface{}, error) {
+		collection1 := Collection{}
+		collection1.ID = 1337
+		collection1.DecksJSON = "{\"1\": {\"name\": \"Default\"}, \"1234\": {\"name\": \"Korean\"}}"
+
+		collection2 := Collection{}
+		collection2.ID = 1339
+		collection2.DecksJSON = "{\"888\": {\"name\": \"German\"}, \"1234\": {\"name\": \"More Korean\"}}"
+
+		fakeCollections := []*Collection{&collection1, &collection2}
+
+		source := reflect.ValueOf(fakeCollections)
+		dest := reflect.ValueOf(i).Elem()
+
+		// write to destination
+		dest.Set(source)
+
+		return []interface{}{}, nil
+	}
+
+	client := Client{}
+	client.DBPath = "foo"
+	client.DBHandle = &m
+
+	decks, err := client.GetDecks()
+	if err != nil {
+		t.Errorf("did not expect error, got: '%s'", err.Error())
+	}
+
+	if len(decks) != 4 {
+		t.Errorf("expected 4 decks, found %d", len(decks))
+	}
+
+	expectedStrings := []string{"Default", "German", "Korean", "More Korean"}
+	for _, expectedString := range expectedStrings {
+		found := false
+		for _, result := range decks {
+			if expectedString == result.Name {
+				found = true
+				break
+			}
+		}
+
+		if found != true {
+			t.Fatalf("expected to find '%s' but couldnt find it", expectedString)
+		}
+	}
+
 }

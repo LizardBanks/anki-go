@@ -83,3 +83,19 @@ func (client *Client) GetCollections() ([]*Collection, error) {
 
 	return results, nil
 }
+
+func (client *Client) GetDecks() ([]Deck, error) {
+	collections, err := client.GetCollections()
+	if err != nil {
+		return []Deck{}, err
+	}
+
+	var decks []Deck
+	for _, collection := range collections {
+		for _, deck := range collection.Decks {
+			decks = append(decks, deck)
+		}
+	}
+
+	return decks, nil
+}

@@ -1,6 +1,6 @@
 package anki
 
-import gorp "gopkg.in/gorp.v1"
+import "fmt"
 
 const (
 	CardTypeNew          = 0
@@ -32,9 +32,20 @@ type Card struct {
 	Data                 string `db:"data"`
 }
 
-func GetCards(dbmap *gorp.DbMap) ([]Card, error) {
+func (client *Client) GetCards() ([]Card, error) {
 	results := []Card{}
-	_, err := dbmap.Select(&results, "SELECT * from cards")
+	_, err := client.DBHandle.Select(&results, "SELECT * from cards")
+	if err != nil {
+		return make([]Card, 0), err
+	}
+
+	return results, nil
+}
+
+func (client *Client) GetCardsForDeck(deck *Deck) ([]Card, error) {
+	results := []Card{}
+	query := fmt.Sprintf("SELECT * from cards WHERE did = %d", deck.ID)
+	_, err := client.DBHandle.Select(&results, query)
 	if err != nil {
 		return make([]Card, 0), err
 	}
